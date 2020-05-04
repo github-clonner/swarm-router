@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/robfig/cron"
 	"log"
 	"os"
 	"os/exec"
@@ -23,6 +24,9 @@ var (
 
 	// backends port rules
 	overrideBackendPorts = getEnv("OVERRIDE_BACKEND_PORTS", "")
+
+	// backends verify tls
+	backendsVerifyTLS = getEnv("BACKENDS_VERIFY_TLS", "")
 )
 
 func getEnv(key, defaultValue string) string {
@@ -36,7 +40,6 @@ func getEnv(key, defaultValue string) string {
 }
 
 func haproxy(exit chan bool) {
-
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -56,6 +59,11 @@ func init() {
 }
 
 func main() {
+	// Cleanup scheduler
+	c := cron.New()
+	c.AddFunc("@daily", reload)
+	c.Start()
+	// Start swarm-router and haproxy
 	exit := make(chan bool, 1)
 	go router(exit, swarmRouterPort)
 	go haproxy(exit)
